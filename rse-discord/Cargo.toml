@@ -1,0 +1,19 @@
+[package]
+name = "rse-discord"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+poise = "0.6.1"
+rse-core.workspace = true
+snafu.workspace = true
+chrono.workspace = true
+rust_decimal.workspace = true
+uuid.workspace = true
+tracing.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,17 @@
+[package]
+name = "rse-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+snafu.workspace = true
+chrono.workspace = true
+rust_decimal.workspace = true
+uuid.workspace = true
+futures-util.workspace = true
+sqlx.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

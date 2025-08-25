@@ -1,0 +1,6 @@
+target
+deny.toml
+flake.lock
+flake.nix
+local.dic
+spellcheck.toml
