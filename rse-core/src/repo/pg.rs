@@ -147,7 +147,7 @@ impl super::StockRepository for PgPort {
         &self,
         id: &uuid::Uuid,
         page: &Pager,
-    ) -> impl Future<Output = super::Result<Option<(Vec<(Ticker, u32)>, usize)>>> + Send {
+    ) -> impl Future<Output = super::Result<Option<(Vec<(Ticker, u32)>, i64)>>> + Send {
         struct StockValues {
             pub ticker: String,
             pub shares: i32,
@@ -182,32 +182,85 @@ impl super::StockRepository for PgPort {
                 })
                 .collect();
 
-            let mut num =
-                sqlx::query_scalar!("SELECT COUNT(*) FROM holdings WHERE user_id = $1", id)
-                    .fetch_one(&self.pool)
-                    .await
-                    .map_err(|_| Error::Unspecified)?
-                    .unwrap_or_default();
+            let num = sqlx::query_scalar!("SELECT COUNT(*) FROM holdings WHERE user_id = $1", id)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|_| Error::Unspecified)?
+                .unwrap_or_default();
 
-            let len: i64 = res
-                .len()
-                .try_into()
-                .expect("Database ensures that this is valid");
-
-            num -= i64::max(0, page.offset() + len);
-
-            Ok(Some((
-                res,
-                num.try_into().expect("Will always be positive"),
-            )))
+            Ok(Some((res, num)))
         }
     }
 
-    // fn list_stocks(
-    //     &self,
-    //     page: Option<&crate::model::Pager>,
-    // ) -> impl Future<Output = super::Result<(Vec<(Ticker, rust_decimal::Decimal, u32)>, usize)>> + Send
-    // {
-    //     unimplemented!()
-    // }
+    fn list_stocks(
+        &self,
+        page: &Pager,
+    ) -> impl Future<
+        Output = super::Result<Option<(Vec<(Ticker, u32, Decimal, DateTime<Utc>)>, i64)>>,
+    > + Send {
+        struct StockValues {
+            pub ticker: String,
+            pub shares: i32,
+            pub price: Decimal,
+            pub time: DateTime<Utc>,
+        }
+
+        async move {
+            let res = sqlx::query_as!(
+                StockValues,
+                r#"SELECT  stocks.ticker as "ticker!: String", 
+                stocks.shares as "shares!: i32", 
+                stock_events.price, 
+                stock_events.time 
+                FROM stocks LEFT JOIN stock_events on 
+                    stocks.ticker = stock_events.ticker 
+                    AND stock_events.time = (
+                        SELECT max(stock_events.time) 
+                        FROM stock_events 
+                            WHERE ticker = stocks.ticker
+                    ) LIMIT $1 OFFSET $2"#,
+                page.limit(),
+                page.offset()
+            )
+            .fetch_all(&self.pool)
+            .await
+            .map_or_else(
+                |err| match err {
+                    sqlx::Error::RowNotFound => Ok(None),
+                    _ => Err(Error::Unspecified),
+                },
+                |v| Ok(Some(v)),
+            )?
+            .unwrap_or_default();
+
+            if res.is_empty() {
+                return Ok(None);
+            }
+
+            let res: Vec<_> = res
+                .into_iter()
+                .filter_map(|v| {
+                    let ticker = Ticker::try_from(v.ticker.as_str());
+
+                    match ticker {
+                        Ok(ticker) => Some((
+                            ticker,
+                            v.shares.try_into().expect("Always works"),
+                            v.price,
+                            v.time,
+                        )),
+                        Err(_) => None,
+                    }
+                })
+                .collect();
+
+            let num = sqlx::query_scalar!("SELECT COUNT(*) FROM stocks")
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|_| Error::Unspecified)?
+                .unwrap_or_default();
+
+            Ok(Some((res, num)))
+        }
+    }
 }

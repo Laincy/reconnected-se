@@ -77,4 +77,14 @@ impl Pager {
     pub const fn add_limit(&mut self, v: i64) {
         self.limit += v;
     }
+
+    /// Sets the Pager's offset
+    pub const fn set_offset(&mut self, v: i64) {
+        self.offset = v;
+    }
+
+    /// Sets the Pager's limit
+    pub const fn set_limit(&mut self, v: i64) {
+        self.limit = v;
+    }
 }

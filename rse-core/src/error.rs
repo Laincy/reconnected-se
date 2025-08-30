@@ -27,7 +27,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 /// Errors returned to ingress ports. Should not be directly returned to end users, but rather
 /// transformed into an appropriate error that does not expose any internal details of our API.
-#[derive(Debug, Snafu, Clone, Copy)]
+#[derive(Debug, Snafu, Clone, Copy, PartialEq, Eq)]
 #[snafu(visibility(pub(crate)))]
 #[allow(missing_docs, variant_size_differences)]
 pub enum Error {
@@ -44,6 +44,10 @@ pub enum Error {
     /// as Discord or `Chatbox`.
     #[snafu(display("There is no account linked to passed ID"))]
     UserNotFound,
+    /// Thrown only by the [`list_stocks`](super::Service::list_stocks) method. Occurs when there
+    /// are no stocks to fetch with a given page.
+    #[snafu(display("Currently, no stocks exist"))]
+    NoStocksExist,
 }
 
 impl From<crate::repo::Error> for Error {

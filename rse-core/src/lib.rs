@@ -22,12 +22,14 @@
 use std::num::NonZeroI64;
 
 use crate::{
-    error::UserNotFoundSnafu,
+    error::{DatabaseSnafu, NoStocksExistSnafu, UserNotFoundSnafu},
     model::{Pager, UserInfo, ticker::Ticker},
     repo::StockRepository,
 };
+use chrono::{DateTime, Utc};
 use error::Result;
-use snafu::OptionExt;
+use rust_decimal::Decimal;
+use snafu::{OptionExt, ResultExt};
 use uuid::Uuid;
 
 #[allow(unused_imports)] // Used for docs
@@ -109,32 +111,31 @@ impl<R: StockRepository> Service<R> {
         self.repo.user_info(id).await?.context(UserNotFoundSnafu)
     }
 
-    /// Lists all of a user's holdings in a paginated way. Also returns the number of remaining
-    /// entries.
+    /// Lists all of a user's holdings in a paginated way. Also returns the total number of entries
     ///
     /// # Errors
     /// * [`UserNotFound`](Error::UserNotFound) - There is no account linked to ID
     /// * [`DatabaseError`](Error::DatabaseError) - An issue with the underlying data store
-    pub async fn get_holdings(
-        &self,
-        id: &Uuid,
-        page: &Pager,
-    ) -> Result<(Vec<(Ticker, u32)>, usize)> {
+    pub async fn get_holdings(&self, id: &Uuid, page: &Pager) -> Result<(Vec<(Ticker, u32)>, i64)> {
         self.repo
             .get_holdings(id, page)
             .await?
             .context(UserNotFoundSnafu)
     }
 
-    // /// Lists all stocks on the market, returning their ticker, most recent sell price, and number
-    // /// of shares. Also returns the number of stocks remaining if this is called with a pager.
-    // ///
-    // /// # Errors
-    // /// * [`DatabaseError`](Error::DatabaseError) - An issue with the underlying data store
-    // pub async fn list_stocks(
-    //     &self,
-    //     page: Option<&Pager>,
-    // ) -> Result<(Vec<(Ticker, Decimal, u32)>, usize)> {
-    //     Ok(self.repo.list_stocks(page).await?)
-    // }
+    /// Lists all stocks on the market, returning their ticker, most recent sell price, and number
+    /// of shares. Also returns the total number of stocks
+    ///
+    /// # Errors
+    /// * [`DatabaseError`](Error::DatabaseError) - An issue with the underlying data store
+    pub async fn list_stocks(
+        &self,
+        page: &Pager,
+    ) -> Result<(Vec<(Ticker, u32, Decimal, DateTime<Utc>)>, i64)> {
+        self.repo
+            .list_stocks(page)
+            .await
+            .context(DatabaseSnafu)?
+            .context(NoStocksExistSnafu)
+    }
 }

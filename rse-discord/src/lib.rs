@@ -18,13 +18,15 @@
 
 //! Discord adapters for the `RSE` program
 
-use poise::serenity_prelude::{self as serenity, OnlineStatus};
+use poise::serenity_prelude::{self as serenity, GuildId, OnlineStatus};
 use rse_core::{Service, repo::StockRepository};
 
-pub use error::{DiscResult, Error};
+pub use error::Error;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tracing::info;
+
+mod commands;
 mod error;
 
 /// Context of the discord runner
@@ -42,12 +44,23 @@ pub async fn start<R: StockRepository>(
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![about()],
+            commands: vec![
+                about(),
+                commands::register(),
+                commands::portfolio(),
+                commands::stocks(),
+            ],
+            on_error: error::on_error,
             ..Default::default()
         })
-        .setup(|_ctx, _ready, _framework| {
+        .setup(|ctx, _ready, framework| {
             Box::pin(async move {
-                // poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                poise::builtins::register_in_guild(
+                    ctx,
+                    &framework.options().commands,
+                    GuildId::new(1_408_958_403_438_444_746),
+                )
+                .await?;
                 Ok(service)
             })
         })
@@ -83,10 +96,10 @@ pub async fn start<R: StockRepository>(
 }
 
 #[poise::command(slash_command, prefix_command, guild_only)]
-async fn about<R: StockRepository>(ctx: Context<'_, R>) -> DiscResult {
-    let reply = poise::CreateReply::default()
-        .ephemeral(true)
-        .content("A discord bot that manages the Reconnected Stock Exchange");
+async fn about<R: StockRepository>(ctx: Context<'_, R>) -> Result<(), Error> {
+    let reply = poise::CreateReply::default().ephemeral(true).content(
+        "A discord bot that manages the Reconnected Stock Exchange.\nLicensed under AGPL-3.0",
+    );
     ctx.send(reply).await?;
 
     Ok(())

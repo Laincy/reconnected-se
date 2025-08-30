@@ -25,10 +25,16 @@ use tokio::{
 };
 use tokio_util::sync::CancellationToken;
 use tracing::info;
+use tracing_subscriber::layer::SubscriberExt;
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
-    tracing_subscriber::fmt::init();
+    let fmt_layer = tracing_subscriber::fmt::Layer::default();
+
+    let subscriber = tracing_subscriber::registry().with(fmt_layer);
+
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+
     color_eyre::install()?;
 
     let cancel_token = CancellationToken::new();

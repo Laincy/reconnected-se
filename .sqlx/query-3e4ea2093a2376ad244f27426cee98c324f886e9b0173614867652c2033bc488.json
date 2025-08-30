@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT  stocks.ticker as \"ticker!: String\", \n                stocks.shares as \"shares!: i32\", \n                stock_events.price, \n                stock_events.time \n                FROM stocks LEFT JOIN stock_events on \n                    stocks.ticker = stock_events.ticker \n                    AND stock_events.time = (\n                        SELECT max(stock_events.time) \n                        FROM stock_events \n                            WHERE ticker = stocks.ticker\n                    ) LIMIT $1 OFFSET $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ticker!: String",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "shares!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "price",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "time",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "3e4ea2093a2376ad244f27426cee98c324f886e9b0173614867652c2033bc488"
+}

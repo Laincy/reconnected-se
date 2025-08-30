@@ -19,6 +19,8 @@
 //! Abstract implementation details for the backing stock repository
 
 use crate::model::{Pager, UserInfo, ticker::Ticker};
+use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 use snafu::Snafu;
 use uuid::Uuid;
 
@@ -29,7 +31,7 @@ mod pg;
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Common errors thrown when interfacing with a [`StockRepository`]
-#[derive(Debug, Snafu, Clone, Copy)]
+#[derive(Debug, Snafu, Clone, Copy, PartialEq, Eq)]
 #[snafu(visibility(pub(crate)))]
 #[allow(missing_docs)]
 pub enum Error {
@@ -96,8 +98,7 @@ pub trait StockRepository: 'static + Clone + Send + Sync {
         mc_id: Option<&Uuid>,
     ) -> impl Future<Output = Result<Uuid>> + Send;
 
-    /// Lists a user's holdings in a paginated way, returning them along with the number of
-    /// remaining entries if the user exists.
+    /// Lists a user's holdings in a paginated way, as well as the total number of entries.
     ///
     /// # Errors
     /// * [`Unspecified`](Error::Unspecified) - An issue with the underlying repository
@@ -106,15 +107,15 @@ pub trait StockRepository: 'static + Clone + Send + Sync {
         &self,
         id: &Uuid,
         page: &Pager,
-    ) -> impl Future<Output = Result<Option<(Vec<(Ticker, u32)>, usize)>>> + Send;
+    ) -> impl Future<Output = Result<Option<(Vec<(Ticker, u32)>, i64)>>> + Send;
 
-    // /// Lists all stocks
-    // ///
-    // /// # Errors
-    // /// * [`Unspecified`](Error::Unspecified) - An issue with the underlying repository
-    // #[allow(clippy::type_complexity)]
-    // fn list_stocks(
-    //     &self,
-    //     page: &Pager,
-    // ) -> impl Future<Output = Result<(Vec<(Ticker, Decimal, u32)>, usize)>> + Send;
+    /// Lists all stocks
+    ///
+    /// # Errors
+    /// * [`Unspecified`](Error::Unspecified) - An issue with the underlying repository
+    #[allow(clippy::type_complexity)]
+    fn list_stocks(
+        &self,
+        page: &Pager,
+    ) -> impl Future<Output = Result<Option<(Vec<(Ticker, u32, Decimal, DateTime<Utc>)>, i64)>>> + Send;
 }

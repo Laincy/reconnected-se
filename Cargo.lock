@@ -1838,6 +1838,7 @@ name = "rse-discord"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "futures-util",
  "poise",
  "rse-core",
  "rust_decimal",
